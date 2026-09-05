@@ -32,21 +32,6 @@ const nextConfig: NextConfig = {
           { key: "Vary", value: "Accept" },
         ],
       },
-      // COOP/COEP for editor routes (FFmpeg WASM)
-      {
-        source: "/editor/:path*",
-        headers: [
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
-        ],
-      },
-      {
-        source: "/home",
-        headers: [
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
-        ],
-      },
     ];
   },
 

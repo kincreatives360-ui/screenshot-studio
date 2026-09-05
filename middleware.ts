@@ -43,16 +43,6 @@ export default function middleware(request: NextRequest) {
     return NextResponse.rewrite(url, { request: { headers } });
   }
 
-  if (negotiable && isUnacceptable(accept)) {
-    return new NextResponse(renderNotAcceptableMarkdown(accept ?? ""), {
-      status: 406,
-      headers: {
-        "Content-Type": "text/markdown; charset=utf-8",
-        Vary: "Accept, Accept-Encoding",
-      },
-    });
-  }
-
   const response = intlMiddleware(request);
   appendVaryAccept(response.headers);
   response.headers.set(

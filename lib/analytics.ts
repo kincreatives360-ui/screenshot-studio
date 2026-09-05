@@ -17,6 +17,7 @@ import posthog from 'posthog-js';
  */
 function shouldTrack(): boolean {
   if (typeof window === 'undefined') return false;
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return false;
 
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {

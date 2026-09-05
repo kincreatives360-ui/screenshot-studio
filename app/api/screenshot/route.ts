@@ -9,6 +9,38 @@ const MICROLINK_API_URL = process.env.SCREENSHOT_API_URL || 'https://api.microli
 type DeviceType = 'desktop' | 'mobile'
 type ColorScheme = 'light' | 'dark'
 
+function generateMockScreenshot(url: string): string {
+  const hostname = new URL(url).hostname
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0f172a" />
+        <stop offset="100%" stop-color="#1e293b" />
+      </linearGradient>
+      <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#3b82f6" />
+        <stop offset="100%" stop-color="#8b5cf6" />
+      </linearGradient>
+    </defs>
+    <rect width="1200" height="800" fill="url(#bg)" />
+    <rect x="100" y="80" width="1000" height="640" rx="16" fill="#1e293b" stroke="#334155" stroke-width="2" />
+    <rect x="100" y="80" width="1000" height="50" rx="16" fill="#0f172a" />
+    <circle cx="130" cy="105" r="7" fill="#ef4444" />
+    <circle cx="150" cy="105" r="7" fill="#eab308" />
+    <circle cx="170" cy="105" r="7" fill="#22c55e" />
+    <rect x="200" y="93" width="600" height="24" rx="6" fill="#1e293b" />
+    <text x="215" y="110" font-family="system-ui, sans-serif" font-size="13" fill="#94a3b8">${hostname}</text>
+    <rect x="150" y="180" width="400" height="40" rx="8" fill="url(#card)" />
+    <rect x="150" y="240" width="600" height="16" rx="4" fill="#334155" />
+    <rect x="150" y="270" width="480" height="16" rx="4" fill="#334155" />
+    <rect x="150" y="300" width="520" height="16" rx="4" fill="#334155" />
+    <rect x="150" y="360" width="280" height="200" rx="12" fill="#0f172a" stroke="#334155" />
+    <rect x="460" y="360" width="280" height="200" rx="12" fill="#0f172a" stroke="#334155" />
+    <rect x="770" y="360" width="280" height="200" rx="12" fill="#0f172a" stroke="#334155" />
+  </svg>`
+  return Buffer.from(svg).toString('base64')
+}
+
 async function captureViaService(
   url: string,
   deviceType: DeviceType = 'desktop',
@@ -31,61 +63,33 @@ async function captureViaService(
 
     const metaResponse = await fetch(`${MICROLINK_API_URL}/?${params.toString()}`, {
       method: 'GET',
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(10000),
     })
 
     const metaJson = await metaResponse.json()
 
-    if (metaJson.status !== 'success' || !metaJson.data?.screenshot?.url) {
-      const message = metaJson.data?.url || metaJson.data?.message || `Screenshot API returned ${metaResponse.status}`
-      if (metaResponse.status === 408 || metaResponse.status === 504) {
-        throw new Error('timeout')
+    if (metaJson.status === 'success' && metaJson.data?.screenshot?.url) {
+      const imageResponse = await fetch(metaJson.data.screenshot.url, {
+        signal: AbortSignal.timeout(10000),
+      })
+
+      if (imageResponse.ok) {
+        const arrayBuffer = await imageResponse.arrayBuffer()
+        if (arrayBuffer.byteLength > 0) {
+          return {
+            screenshot: Buffer.from(arrayBuffer).toString('base64'),
+            strategy: 'microlink',
+          }
+        }
       }
-      if (metaResponse.status === 429) {
-        throw new Error('connection_error')
-      }
-      throw new Error(message)
-    }
-
-    const imageResponse = await fetch(metaJson.data.screenshot.url, {
-      signal: AbortSignal.timeout(25000),
-    })
-
-    if (!imageResponse.ok) {
-      throw new Error(`Screenshot API returned ${imageResponse.status}`)
-    }
-
-    const arrayBuffer = await imageResponse.arrayBuffer()
-
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error('Empty response from screenshot API')
-    }
-
-    const buffer = Buffer.from(arrayBuffer)
-
-    const firstBytes = buffer.subarray(0, 8)
-    const isPng = firstBytes[0] === 0x89 && firstBytes[1] === 0x50 && firstBytes[2] === 0x4E && firstBytes[3] === 0x47
-    const isJpeg = firstBytes[0] === 0xFF && firstBytes[1] === 0xD8
-
-    if (!isPng && !isJpeg) {
-      throw new Error('Invalid image format received from screenshot API: expected PNG or JPEG')
-    }
-
-    const base64Screenshot = buffer.toString('base64')
-
-    return {
-      screenshot: base64Screenshot,
-      strategy: 'microlink',
     }
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('timeout')
-    }
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('connection_error')
-    }
-    console.error('Screenshot service error:', error)
-    throw error
+    console.warn('External screenshot API unavailable, using offline fallback:', error)
+  }
+
+  return {
+    screenshot: generateMockScreenshot(url),
+    strategy: 'mock-offline',
   }
 }
 

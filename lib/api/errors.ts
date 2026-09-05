@@ -14,6 +14,7 @@ export type ApiErrorCode =
   | "upstream_timeout"
   | "upstream_unavailable"
   | "upstream_failed"
+  | "service_unavailable"
   | "internal_error";
 
 export interface ApiErrorBody {

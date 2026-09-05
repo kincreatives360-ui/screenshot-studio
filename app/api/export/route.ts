@@ -9,9 +9,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
 import { QUALITY_PRESETS, type ExportFormat, type QualityPreset } from '@/lib/export/types';
 import { apiError, methodNotAllowed } from '@/lib/api/errors';
+
+let sharp: typeof import('sharp') | null = null;
+try {
+  sharp = (await import('sharp')).default;
+} catch {
+  console.warn('[Export API] sharp not available — server-side compression disabled');
+}
 
 function isValidFormat(format: string): format is ExportFormat {
   return format === 'png' || format === 'jpeg' || format === 'webp';
@@ -22,6 +28,15 @@ function isValidQualityPreset(preset: string): preset is QualityPreset {
 }
 
 export async function POST(request: NextRequest) {
+  if (!sharp) {
+    return apiError(
+      503,
+      'service_unavailable',
+      'Image compression is not available on this environment',
+      'Use client-side export (canvas.toBlob) instead. Server-side compression requires the sharp binary.'
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();

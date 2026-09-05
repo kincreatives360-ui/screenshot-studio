@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { SITE_URL } from "@/lib/seo/metadata";
-import Script from "next/script";
 import {
   Geist,
   Geist_Mono,
@@ -31,13 +30,14 @@ import {
   Albert_Sans,
 } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/query-client";
 import { GlobalDropZone } from "@/components/GlobalDropZone";
 import { PathTracker } from "@/components/landing/GoBackButton";
 import { getRootJsonLd } from "@/lib/seo/json-ld";
 import { getLocale } from "next-intl/server";
-import { Databuddy } from "@databuddy/sdk/react";
+import { Analytics } from "@/components/Analytics";
 
 // System UI fonts
 const geistSans = Geist({
@@ -387,29 +387,9 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(rootJsonLd) }}
         />
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8704843786311642"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
-        <Script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-WWTQR26VH4"
-          strategy="afterInteractive"
-        />
-        <Script id="ga4" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-WWTQR26VH4');`}
-        </Script>
-        <Databuddy
-          clientId={'961c3ecd-da76-4b89-95cb-ee72a5fb72f4'}
-          trackWebVitals
-          trackErrors
-          trackOutgoingLinks
-        />
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
         <QueryProvider>
           <GlobalDropZone>
             <PathTracker />
